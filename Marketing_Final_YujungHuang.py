@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[100]:
+# In[114]:
 
 
 import pandas as pd
@@ -22,7 +22,7 @@ pd.set_option('display.max_columns', 500)
 
 # ## Data Preprocessing
 
-# In[101]:
+# In[6]:
 
 
 # Read data
@@ -491,7 +491,7 @@ sub_eng_rep_clus.head()
 
 # ### Elbow Test
 
-# In[ ]:
+# In[125]:
 
 
 from sklearn.cluster import KMeans
@@ -514,7 +514,7 @@ get_wcss(sub_eng_rep_clus)
 
 # ### Predict Clusters
 
-# In[ ]:
+# In[126]:
 
 
 # Create k-means model
@@ -524,7 +524,7 @@ kmeans = KMeans(n_clusters=nclusters, init='k-means++', max_iter=300, n_init=10,
 cluster = kmeans.fit_predict(sub_eng_rep_clus)
 
 
-# In[ ]:
+# In[127]:
 
 
 # Let's look at the centroids of each feature for each cluster
@@ -540,7 +540,7 @@ centroids
 #centroids.to_csv('/Users/huangyurong/Desktop/Marketing Analytics/Final Case/cluster_summary.csv', index=False, header=True)
 
 
-# In[ ]:
+# In[128]:
 
 
 # Mark each customer with the cluster he/she is assigned to
@@ -555,7 +555,7 @@ cluster_result.head()
 
 # ## Churn Forecasting
 
-# In[ ]:
+# In[117]:
 
 
 sub_eng_rep = pd.read_csv('sub_eng_rep.csv', index_col=0).reset_index()
@@ -570,14 +570,14 @@ sub_eng_rep = sub_eng_rep.drop(['monthly_price','account_creation_date_x','creat
 # <br> Churn if completed trial, requested refund, and revenue <= 0
 # <br> Churn if completed trial, revenue <= 0 though did not request refund
 
-# In[ ]:
+# In[118]:
 
 
 sub_eng_rep_1 = sub_eng_rep.copy()
 sub_eng_rep_1.groupby(['trial_completed_TF','refund_after_trial_TF','revenue_cat']).size()
 
 
-# In[ ]:
+# In[119]:
 
 
 def churn_1(data):
@@ -597,13 +597,13 @@ def churn_1(data):
 sub_eng_rep_1['churn'] = sub_eng_rep_1.apply(churn_1, axis=1)
 
 
-# In[ ]:
+# In[120]:
 
 
 sub_eng_rep_1.churn.value_counts()
 
 
-# In[ ]:
+# In[121]:
 
 
 # Drop columns which involved in the determination of churn 
@@ -620,7 +620,7 @@ print(sub_eng_rep_1.shape)
 sub_eng_rep_1.head()
 
 
-# In[ ]:
+# In[122]:
 
 
 # Fill categorical null values with "other"
@@ -642,7 +642,7 @@ sub_eng_rep_1['op_sys'] = sub_eng_rep_1.apply(op_sys, axis=1)
 sub_eng_rep_1.fillna(0, inplace=True)
 
 
-# In[ ]:
+# In[123]:
 
 
 # Get dummies of categorical values
@@ -652,7 +652,7 @@ print(sub_eng_rep_1.shape)
 sub_eng_rep_1.head()
 
 
-# In[ ]:
+# In[124]:
 
 
 def model_evaluation(clf):
@@ -677,7 +677,7 @@ def model_evaluation(clf):
     #print(classification_report(y_test, pred))
 
 
-# In[ ]:
+# In[125]:
 
 
 X = sub_eng_rep_1.drop(['churn'],axis=1)
@@ -688,7 +688,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 
 # ### Logistic Regression
 
-# In[ ]:
+# In[126]:
 
 
 from sklearn.linear_model import LogisticRegression
@@ -699,7 +699,7 @@ for c in [.01,.1,1,10,100]:
     print("-"*60)
 
 
-# In[ ]:
+# In[127]:
 
 
 clf_best = LogisticRegression(C=1).fit(X_train, y_train)
@@ -715,7 +715,7 @@ for i in clf_best.coef_[0]:
 
 # ### Decision Tree
 
-# In[ ]:
+# In[128]:
 
 
 from sklearn.tree import DecisionTreeClassifier
@@ -728,7 +728,7 @@ for dep in [3,4,5,6,7]:
         print("-"*60)
 
 
-# In[ ]:
+# In[129]:
 
 
 # Decision Tree Model with the best params
@@ -746,7 +746,7 @@ plot_feature_importances(clf_DT_best, X_train.columns)
 plt.show()
 
 
-# In[ ]:
+# In[130]:
 
 
 # Plot the decision tree 
@@ -762,9 +762,10 @@ display(SVG(graph.pipe(format='svg')))
 
 # ## Revenue Modeling
 
-# In[ ]:
+# In[131]:
 
 
+# Create dataframe which ids were labelled with predict probabilities
 churn = pd.DataFrame(data=clf_DT_best.predict_proba(X_test))
 churn = churn.join(pd.DataFrame(y_test).reset_index())
 churn = churn.merge(pd.DataFrame(sub_eng_rep_1['subid']).reset_index(),on='index')
@@ -773,7 +774,7 @@ churn.columns = ['subid','y_test','y_pred']
 churn
 
 
-# In[ ]:
+# In[132]:
 
 
 offer_accept_rate = 0.3
@@ -814,9 +815,10 @@ def plan(row,thresh):
         return 'churn'
 
 
-# In[ ]:
+# In[133]:
 
 
+# Create dataframe for revenue modeling
 def rev_model(churn, offer_accept_rate, thresh):
     
     rec = 'receive_offer_'+str(thresh)
@@ -834,8 +836,127 @@ def rev_model(churn, offer_accept_rate, thresh):
     return churn
 
 
-# In[ ]:
+# In[134]:
 
 
 rev_model(churn,offer_accept_rate,0.5)
+
+
+# ## Calculating Customer CLV
+
+# In[135]:
+
+
+# Read data
+spend = pd.read_excel('advertising_spend_data.xlsx',header=2)
+spend['month'] = spend['date'].dt.month_name()
+spend = spend.set_index(['month']).drop('date',axis=1)
+spend
+
+
+# In[136]:
+
+
+# Adjust the spend to the percentage of data we have on subscriber data
+rep_2 = pd.read_pickle(r'customer_service_reps.dms')
+rep_2['month'] = rep_2['account_creation_date'].dt.month_name()
+rep_2 = rep_2.drop_duplicates('subid')
+
+sub = pd.read_pickle(r'subscribers.dms')
+sub['month'] = sub['account_creation_date'].dt.month_name()
+
+adjust = rep_2.groupby('month').size().to_frame('rep_count')
+adjust['sub_count'] = sub.groupby('month').size()
+adjust['pct'] = adjust['sub_count']/adjust['rep_count']
+
+spend['pct'] = [0.127728,0.116322,0.234436,0.184377,0.193055,0.138201,0.188798,0.257344,0.158847,0.136252]
+
+for col in spend.columns:
+    if 'pct' not in col:
+        spend[col] = spend[col] * spend['pct']
+
+spend = spend.drop('pct',axis=1)
+spend
+
+
+# In[137]:
+
+
+# Filter to subscribers who were acquired from these channels
+sub_channel = sub[sub['attribution_technical'].isin(spend.columns.tolist())]
+sub_channel['month'] = sub_channel['account_creation_date'].dt.month_name()
+sub_channel = sub_channel[(sub_channel['cancel_before_trial_end'] == True)&(sub_channel['refund_after_trial_TF'] == False)]
+sub_channel.head()
+
+
+# In[138]:
+
+
+# Calculate CAC for each customer by month by channel
+sub_cac = sub_channel.groupby(['month','attribution_technical']).size().to_frame(name='count')
+sub_cac = sub_cac.reset_index()
+
+spend_list=[]
+
+for index, row in sub_cac.iterrows():
+    month = row['month']
+    channel = row['attribution_technical']
+    for index, row in spend.iterrows():
+        if index == month:
+            spend_list.append(row[channel])
+
+sub_cac['spend'] = spend_list
+sub_cac['CAC'] = sub_cac['spend'] / sub_cac['count']
+sub_cac
+
+
+# In[145]:
+
+
+sub_clv = sub[['subid','monthly_price','discount_price','join_fee','month','attribution_technical']]
+churn_2 = churn[['subid','y_test','y_pred']]
+sub_clv = pd.merge(sub_clv, churn_2, on='subid')
+sub_clv
+
+
+# In[146]:
+
+
+merge_clv = pd.merge(sub_clv, sub_cac, on=['month','attribution_technical'],how='left')
+merge_clv = merge_clv.drop(['count','spend'],axis=1)
+merge_clv
+
+
+# In[147]:
+
+
+# Fill CAC for organic channels with 0
+organic_list = ['organic','google_organic','bing_organic','pininterest_organic','facebook_organic']
+
+def organic(row):
+    if row['attribution_technical'] in organic_list:
+        return 0
+    else:
+        return row['CAC']
+    
+merge_clv['CAC'] = merge_clv.apply(organic,axis=1)
+
+# Fill mean for other null values
+merge_clv['CAC'].fillna(sub_cac.CAC.mean(),inplace=True)
+
+
+# In[148]:
+
+
+# Distribution table of expected CLV
+
+discount_rate = 0.03 # assumme annual discount rate = 0.1, so for 4 months is 0.03
+
+def clv(row):
+    clv = (row['discount_price']*4) * ((1 + discount_rate)/((1 + discount_rate) - (1 - row['y_pred']))) 
+    clv = clv + (row['discount_price'] * 4) + row['join_fee'] - row['CAC']
+    return clv
+
+merge_clv['CLV'] = merge_clv.apply(clv,axis=1)
+merge_clv
 
